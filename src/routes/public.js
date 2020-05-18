@@ -8,8 +8,9 @@ const apiPublic = new UnoRouter(router)
 const MinIOController = require('../controllers/MinIOController')
 
 apiPublic.create({
-  baseURL: '/test',
+  baseURL: '/storage',
   get: MinIOController.getStorage,
+  getWithParam: [['bucket', MinIOController.getBucket]],
 })
 
 module.exports = router
