@@ -1,6 +1,6 @@
 import 'dotenv/config'
 import minioClient from '#helpers/MinioHelpers'
-import { getTempPath } from '#helpers/utils'
+import { getTempPath, pathUpload } from '#helpers/utils'
 
 async function getAllBuckets(req, res) {
   try {
@@ -32,57 +32,48 @@ async function getAllStorage(req, res) {
   }
 }
 
-async function getFileStreaming(req, res) {
+async function getFileStorage(req, res) {
   const { params } = req
   const { filename } = params
   let stat
   try {
     stat = await minioClient.getFileStat(filename)
   } catch (err) {
-    console.log('minio handleGetSteam error: ', err)
+    console.log('Oops, Error Get File', err)
     return res.status(400).json({ data: err })
   }
-  console.log(stat)
+  // console.log(stat)
 
   const tmpFile = getTempPath(filename)
-  console.log(tmpFile)
+  const uploadPath = pathUpload(filename)
+  // console.log(tmpFile, uploadPath)
 
-  minioClient.getFile(filename, tmpFile, (err) => {
+  minioClient.getFile(req.params.filename, tmpFile, (err) => {
     if (err) {
       return res.status(400).json({ data: err })
     }
-    // eslint-disable-next-line prefer-const
-    let dataMeta = minioClient.getFileMetaData(stat)
-    // let { filename, contentType } = getFileMetaData(stat)
-    console.log(dataMeta)
-  })
-  // getFileStream(filename, (err, stream) => {
-  //   if (err) {
-  //     return res.status(400).json({ data: err })
-  //   }
-  //   // eslint-disable-next-line prefer-const
-  //   let { filename, contentType } = getFileMetaData(stat)
-  //   console.log(filename, contentType)
-  // })
 
-  // getFileStream(req.params.filename, (err, stream) => {
-  //   if (!filename) {
-  //     filename = req.params.filename
-  //   }
-  //   const data = {
-  //     stream,
-  //     originalName: filename,
-  //     contentLength: stream.headers['content-length'],
-  //     contentType,
-  //   }
-  //   return res.status(200).json({ data })
-  // })
+    // eslint-disable-next-line prefer-const
+    let { filename, contentType } = minioClient.getFileMetaData(stat)
+    if (!filename) {
+      filename = req.params.filename
+    }
+    const data = {
+      pathTemp: tmpFile,
+      pathUpload: uploadPath,
+      originalName: filename,
+      contentType,
+      contentLength: stat.size,
+    }
+
+    return res.status(200).json({ data })
+  })
 }
 
 async function uploadedFile(req, res) {
   const { files } = req
   const rawFileData = { ...files.dokumen[0] }
-  console.log(files, rawFileData)
+  // console.log(files, rawFileData)
 
   minioClient.uploadFile(
     rawFileData.filename,
@@ -101,4 +92,4 @@ async function uploadedFile(req, res) {
   )
 }
 
-export { getAllBuckets, getAllStorage, getFileStreaming, uploadedFile }
+export { getAllBuckets, getAllStorage, getFileStorage, uploadedFile }

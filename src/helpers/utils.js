@@ -1,11 +1,12 @@
 const fs = require('fs')
 
-const tempDir = `/tmp/minio/${process.env.MINIO_BUCKET}`
+const tempMinioDir = `/tmp/minio/${process.env.MINIO_BUCKET}`
 
-const getTempPath = (filename) => `${tempDir}/${filename}`
+const getTempPath = (filename) => `${tempMinioDir}/${filename}`
+const pathUpload = (filename) => `/uploads/${filename}`
 
 const removeFile = (tmpFile) => {
-  const regex = new RegExp(`^${tempDir}/`)
+  const regex = new RegExp(`^${tempMinioDir}/`)
   if (!tmpFile || !tmpFile.match(regex)) {
     const errMsg = `Invalid file: ${tmpFile}`
     console.log(errMsg)
@@ -21,5 +22,6 @@ const removeFile = (tmpFile) => {
 
 module.exports = {
   getTempPath,
+  pathUpload,
   removeFile,
 }
