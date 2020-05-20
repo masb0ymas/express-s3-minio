@@ -1,25 +1,16 @@
 import 'dotenv/config'
-import fs from 'fs'
-import s3Client from '../config/minio'
-
-const {
-  getFileStat,
-  getFile,
-  getFileStream,
-  uploadFile,
-  getFileMetaData,
-} = require('../helpers/MinioHelpers')
-const { getTempPath } = require('../helpers/utils')
-
-const { MINIO_REGION, MINIO_BUCKET } = process.env
+import minioClient from '#helpers/MinioHelpers'
+import { getTempPath } from '#helpers/utils'
 
 async function getAllBuckets(req, res) {
   try {
-    const data = await s3Client.listBuckets()
-    if (!data) {
-      throw new Error('Gagal mendapatkan list buckets')
-    }
-    return res.status(200).json({ buckets: data })
+    await minioClient.listBuckets((err, list) => {
+      if (err) {
+        return res.status(400).json({ message: err })
+      }
+
+      return res.status(200).json({ data: list })
+    })
   } catch (e) {
     console.log(e)
     return res.status(500).json({ message: 'gagal' })
@@ -28,15 +19,11 @@ async function getAllBuckets(req, res) {
 
 async function getAllStorage(req, res) {
   try {
-    const dataStream = s3Client.listObjects(MINIO_BUCKET, '', true)
-    const list = []
-    dataStream.on('data', (obj) => {
-      list.push(obj)
-    })
-    dataStream.on('error', (err) => {
-      return res.status(400).json({ message: err })
-    })
-    dataStream.on('end', () => {
+    await minioClient.listFiles((err, list) => {
+      if (err) {
+        return res.status(400).json({ message: err })
+      }
+
       return res.status(200).json({ data: list })
     })
   } catch (e) {
@@ -50,7 +37,7 @@ async function getFileStreaming(req, res) {
   const { filename } = params
   let stat
   try {
-    stat = await getFileStat(filename)
+    stat = await minioClient.getFileStat(filename)
   } catch (err) {
     console.log('minio handleGetSteam error: ', err)
     return res.status(400).json({ data: err })
@@ -60,12 +47,12 @@ async function getFileStreaming(req, res) {
   const tmpFile = getTempPath(filename)
   console.log(tmpFile)
 
-  getFile(filename, tmpFile, (err) => {
+  minioClient.getFile(filename, tmpFile, (err) => {
     if (err) {
       return res.status(400).json({ data: err })
     }
     // eslint-disable-next-line prefer-const
-    let dataMeta = getFileMetaData(stat)
+    let dataMeta = minioClient.getFileMetaData(stat)
     // let { filename, contentType } = getFileMetaData(stat)
     console.log(dataMeta)
   })
@@ -97,7 +84,7 @@ async function uploadedFile(req, res) {
   const rawFileData = { ...files.dokumen[0] }
   console.log(files, rawFileData)
 
-  uploadFile(
+  minioClient.uploadFile(
     rawFileData.filename,
     rawFileData.filename || '',
     rawFileData.mimetype || '',
@@ -114,24 +101,4 @@ async function uploadedFile(req, res) {
   )
 }
 
-async function createBucket(req, res) {
-  const { body } = req
-  const { namaBucket } = body
-  try {
-    const data = await s3Client.makeBucket(namaBucket, process.env.MINIO_REGION)
-    return res
-      .status(200)
-      .json({ message: 'berhasil membuat bucket', bucket: data })
-  } catch (e) {
-    console.log(e)
-    return res.status(500).json({ message: 'gagal' })
-  }
-}
-
-export {
-  getAllBuckets,
-  getAllStorage,
-  createBucket,
-  getFileStreaming,
-  uploadedFile,
-}
+export { getAllBuckets, getAllStorage, getFileStreaming, uploadedFile }

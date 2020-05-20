@@ -11,7 +11,6 @@ const MinIOController = require('#controllers/MinIOController')
 apiPublic.create({
   baseURL: '/bucket',
   get: MinIOController.getAllBuckets,
-  post: MinIOController.createBucket,
   // getWithParam: [['bucket', MinIOController.getBucket]],
 })
 

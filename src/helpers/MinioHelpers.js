@@ -1,70 +1,9 @@
 import 'dotenv/config'
+import s3Client from '#config/minio'
 
-const Minio = require('minio')
+const { MINIO_BUCKET } = process.env
 
-const { MINIO_UPLOADS_FOLDER_NAME, MINIO_BUCKET } = process.env
-
-let s3Client
-
-async function initBucket(s3Client) {
-  console.log('Initial S3 Bucket ', MINIO_BUCKET)
-
-  let exists
-  try {
-    exists = await s3Client.bucketExists(MINIO_BUCKET)
-  } catch (err) {
-    const errMsg = `initBucket - bucketExists: ${err}`
-    console.log(errMsg)
-    throw new Error(errMsg)
-  }
-
-  if (exists) {
-    console.log('initBucket: bucket exists', MINIO_BUCKET)
-  } else {
-    try {
-      await s3Client.makeBucket(
-        MINIO_BUCKET,
-        process.env.MINIO_REGION || 'eu-west-2'
-      )
-      console.log('Bucket creatd')
-    } catch (err) {
-      const errMsg = `initBucket - makeBucket: ${err}`
-      console.log(errMsg)
-      throw new Error(errMsg)
-    }
-    console.log('initBucket: bucket created', MINIO_BUCKET)
-  }
-
-  return true
-}
-
-async function getInstance() {
-  if (s3Client) {
-    return s3Client
-  }
-
-  s3Client = new Minio.Client({
-    endPoint: process.env.MINIO_ENDPOINT,
-    port: Number(process.env.MINIO_PORT),
-    useSSL: process.env.MINIO_SECURITY === 'true',
-    accessKey: process.env.MINIO_ACCESS_KEY,
-    secretKey: process.env.MINIO_SECRET_KEY,
-    region: process.env.MINIO_REGION || 'eu-west-2',
-  })
-
-  await initBucket(s3Client)
-  return s3Client
-}
-
-async function uploadFile(
-  filename,
-  oriFilename,
-  fileType,
-  tempFilePath,
-  callback
-) {
-  const uploads = MINIO_UPLOADS_FOLDER_NAME
-  const filePath = `${uploads}/${filename}`
+async function uploadFile(filename, oriFilename, fileType, tempFilePath, callback) {
   const encodedOriFileName = Buffer.from(oriFilename).toString('base64')
 
   const metaData = {
@@ -72,13 +11,10 @@ async function uploadFile(
     'file-name': encodedOriFileName,
   }
 
-  const s3Client = await getInstance()
-  s3Client.fPutObject(MINIO_BUCKET, filePath, tempFilePath, metaData, callback)
+  s3Client.fPutObject(MINIO_BUCKET, filename, tempFilePath, metaData, callback)
 }
 
 async function uploadFileSteam(filename, oriFilename, fileType, fileStream) {
-  const uploads = MINIO_UPLOADS_FOLDER_NAME
-  const filePath = `${uploads}/${filename}`
   const encodedOriFileName = Buffer.from(oriFilename).toString('base64')
 
   const metaData = {
@@ -86,16 +22,19 @@ async function uploadFileSteam(filename, oriFilename, fileType, fileStream) {
     'file-name': encodedOriFileName,
   }
 
-  const s3Client = await getInstance()
-  return s3Client.putObject(MINIO_BUCKET, filePath, fileStream, metaData)
+  return s3Client.putObject(MINIO_BUCKET, filename, fileStream, metaData)
+}
+
+async function listBuckets(callback) {
+  const data = await s3Client.listBuckets()
+  if (!data) {
+    throw new Error('Gagal mendapatkan list buckets')
+  }
+  callback(null, data)
 }
 
 async function listFiles(callback) {
-  const uploads = MINIO_UPLOADS_FOLDER_NAME
-  const prefix = `${uploads}`
-
-  const s3Client = await getInstance()
-  const stream = s3Client.listObjects(MINIO_BUCKET, prefix, true)
+  const stream = await s3Client.listObjects(MINIO_BUCKET, '', true)
   const list = []
   stream.on('data', (obj) => {
     list.push(obj)
@@ -109,24 +48,15 @@ async function listFiles(callback) {
 }
 
 async function getFile(filename, tmpFile, callback) {
-  // const uploads = MINIO_UPLOADS_FOLDER_NAME
-  // const objectName = `/tmp/minio/${MINIO_BUCKET}/${filename}`
-  const s3Client = await getInstance()
   s3Client.fGetObject(MINIO_BUCKET, filename, tmpFile, callback)
 }
 
 async function getFileStream(filename, callback) {
-  // const uploads = MINIO_UPLOADS_FOLDER_NAME
-  // const objectName = `${uploads}/${fileName}`
-  const s3Client = await getInstance()
   s3Client.getObject(MINIO_BUCKET, filename, callback)
 }
 
 async function getFileStat(filename) {
-  const s3Client = await getInstance()
   return new Promise((resolve, reject) => {
-    // const uploads = MINIO_UPLOADS_FOLDER_NAME
-    // const objectName = `${uploads}/${filename}`
     s3Client.statObject(MINIO_BUCKET, filename, (err, stat) => {
       if (err) {
         return reject(err)
@@ -136,12 +66,9 @@ async function getFileStat(filename) {
   })
 }
 
-async function deleteFile(fileName) {
-  const uploads = MINIO_UPLOADS_FOLDER_NAME
-  const objectName = `${uploads}/${fileName}`
-  const s3Client = await getInstance()
+async function deleteFile(filename) {
   try {
-    await s3Client.removeObject(MINIO_BUCKET, objectName)
+    await s3Client.removeObject(MINIO_BUCKET, filename)
   } catch (err) {
     return err
   }
@@ -151,9 +78,7 @@ async function deleteFile(fileName) {
 const getFileMetaData = (stat) => {
   if (stat && stat.metaData) {
     return {
-      filename: Buffer.from(stat.metaData['file-name'], 'base64').toString(
-        'utf8'
-      ),
+      filename: Buffer.from(stat.metaData['file-name'], 'base64').toString('utf8'),
       contentType: stat.metaData['content-type'],
     }
   }
@@ -161,10 +86,10 @@ const getFileMetaData = (stat) => {
 }
 
 module.exports = {
-  getInstance,
+  listFiles,
+  listBuckets,
   uploadFile,
   uploadFileSteam,
-  listFiles,
   getFile,
   getFileStream,
   getFileStat,
