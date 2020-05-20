@@ -3,15 +3,24 @@ import s3Client from '#config/minio'
 
 const { MINIO_BUCKET } = process.env
 
-async function uploadFile(filename, oriFilename, fileType, tempFilePath, callback) {
+async function uploadFile(filename, oriFilename, fileType, tempFilePath) {
   const encodedOriFileName = Buffer.from(oriFilename).toString('base64')
 
   const metaData = {
     'content-type': fileType,
     'file-name': encodedOriFileName,
+    'x-amz-acl': 'public-read',
   }
 
-  s3Client.fPutObject(MINIO_BUCKET, filename, tempFilePath, metaData, callback)
+  return new Promise((resolve, reject) => {
+    s3Client.fPutObject(MINIO_BUCKET, filename, tempFilePath, metaData, (err, etag) => {
+      if (!err) {
+        console.log(err)
+        reject(new Error('Oops!, error upload file', err))
+      }
+      resolve(etag)
+    })
+  })
 }
 
 async function uploadFileSteam(filename, oriFilename, fileType, fileStream) {
@@ -20,30 +29,45 @@ async function uploadFileSteam(filename, oriFilename, fileType, fileStream) {
   const metaData = {
     'content-type': fileType,
     'file-name': encodedOriFileName,
+    'x-amz-acl': 'public-read',
   }
 
-  return s3Client.putObject(MINIO_BUCKET, filename, fileStream, metaData)
+  return new Promise((resolve, reject) => {
+    s3Client.putObject(MINIO_BUCKET, filename, fileStream, metaData, (err, etag) => {
+      if (!err) {
+        console.log(err)
+        reject(new Error('Oops!, error upload file', err))
+      }
+      resolve(etag)
+    })
+  })
 }
 
-async function listBuckets(callback) {
-  const data = await s3Client.listBuckets()
-  if (!data) {
-    throw new Error('Gagal mendapatkan list buckets')
-  }
-  callback(null, data)
+async function listBuckets() {
+  return new Promise((resolve, reject) => {
+    s3Client.listBuckets((err, data) => {
+      if (!err) {
+        console.log(err)
+        reject(new Error('Oops!, Error get list buckets', err))
+      }
+      resolve(data)
+    })
+  })
 }
 
-async function listFiles(callback) {
-  const stream = await s3Client.listObjects(MINIO_BUCKET, '', true)
-  const list = []
-  stream.on('data', (obj) => {
-    list.push(obj)
-  })
-  stream.on('error', (err) => {
-    callback(err)
-  })
-  stream.on('end', () => {
-    callback(null, list)
+async function listFiles() {
+  return new Promise((resolve, reject) => {
+    const stream = s3Client.listObjects(MINIO_BUCKET, '', true)
+    const list = []
+    stream.on('data', (obj) => {
+      list.push(obj)
+    })
+    stream.on('error', (err) => {
+      reject(err)
+    })
+    stream.on('end', () => {
+      resolve(list)
+    })
   })
 }
 
@@ -66,16 +90,11 @@ async function getFileStat(filename) {
   })
 }
 
-async function deleteFile(filename) {
-  try {
-    await s3Client.removeObject(MINIO_BUCKET, filename)
-  } catch (err) {
-    return err
-  }
-  return null
+async function deleteFile(filename, callback) {
+  s3Client.removeObject(MINIO_BUCKET, filename, callback)
 }
 
-const getFileMetaData = (stat) => {
+async function getFileMetaData(stat) {
   if (stat && stat.metaData) {
     return {
       filename: Buffer.from(stat.metaData['file-name'], 'base64').toString('utf8'),

@@ -22,6 +22,7 @@ apiPublic.create({
     middleware: multerS3,
     callback: MinIOController.uploadedFile,
   },
+  delete: MinIOController.destroyFile,
 })
 
 module.exports = router

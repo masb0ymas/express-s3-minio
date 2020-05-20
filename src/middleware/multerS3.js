@@ -7,7 +7,7 @@ const setupMulterDoc = MulterMiddleware.setup(
     },
   },
   null,
-  ['.csv', '.xls', '.jpg', 'png']
+  ['.csv', '.xls', '.jpg', '.png']
 )
 
 const multerS3 = setupMulterDoc([{ name: 'dokumen', maxCount: 1 }])
