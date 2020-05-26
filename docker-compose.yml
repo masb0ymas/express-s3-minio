@@ -1,0 +1,31 @@
+version: '2'
+
+services:
+  minio:
+    image: minio/minio
+    container_name: miniobkp
+    ports:
+      - 9000:9000
+    env_file:
+      - .env
+    environment:
+      - MINIO_ACCESS_KEY=${MINIO_ACCESS_KEY}
+      - MINIO_SECRET_KEY=${MINIO_SECRET_KEY}
+    command: server /data
+    volumes:
+      - minio:/root/.minio/
+
+  mc:
+    image: minio/mc
+    depends_on:
+      - minio
+    container_name: mcbkp
+    env_file:
+      - .env
+    entrypoint: >
+      /bin/sh -c "
+      /usr/bin/mc mb ${MINIO_BUCKET};
+      /usr/bin/mc policy set public ${MINIO_BUCKET};
+      "
+volumes:
+  minio:

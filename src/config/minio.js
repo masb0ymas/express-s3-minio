@@ -1,4 +1,5 @@
 import 'dotenv/config'
+import createDirNotExist from '#utils/Directory'
 
 const Minio = require('minio')
 
@@ -23,19 +24,28 @@ const s3Client = new Minio.Client({
 
 console.log(`Initial S3 Bucket [ ${MINIO_BUCKET} ]`)
 
+/* Created Directory */
+async function createDirectory(userData) {
+  const pathDirectory = ['./public/uploads']
+  pathDirectory.map((x) => createDirNotExist(x))
+}
+
 /* Check Bucket */
-s3Client.bucketExists(MINIO_BUCKET, function (err, exists) {
+s3Client.bucketExists(MINIO_BUCKET, async function (err, exists) {
   if (err) {
     const errMsg = `Oops!, Bucket exists: ${err}`
     console.log(errMsg)
     throw new Error(errMsg)
   }
 
+  await createDirectory()
+
   /* Bucket Exists */
   if (exists) {
     console.log(`Bucket [ ${MINIO_BUCKET} ] already exists!`)
   } else {
     try {
+      await createDirectory()
       /* Create Bucket */
       s3Client.makeBucket(MINIO_BUCKET, MINIO_REGION || 'eu-west-2', function (err) {
         if (err) {

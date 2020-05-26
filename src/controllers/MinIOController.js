@@ -38,6 +38,9 @@ async function getFileStorage(req, res) {
         return res.status(400).json({ data: err })
       }
 
+      const metaDataFile = minioClient.getFileMetaData(stat)
+      console.log(metaDataFile)
+
       // eslint-disable-next-line prefer-const
       let { filename, contentType } = minioClient.getFileMetaData(stat)
       if (!filename) {

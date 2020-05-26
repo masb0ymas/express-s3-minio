@@ -12,9 +12,13 @@ async function uploadFile(filename, oriFilename, fileType, tempFilePath) {
     'x-amz-acl': 'public-read',
   }
 
+  console.log(metaData)
+
   return new Promise((resolve, reject) => {
     s3Client.fPutObject(MINIO_BUCKET, filename, tempFilePath, metaData, (err, etag) => {
-      if (!err) {
+      console.log(err, etag)
+
+      if (err) {
         console.log(err)
         reject(new Error('Oops!, error upload file', err))
       }
@@ -34,7 +38,7 @@ async function uploadFileSteam(filename, oriFilename, fileType, fileStream) {
 
   return new Promise((resolve, reject) => {
     s3Client.putObject(MINIO_BUCKET, filename, fileStream, metaData, (err, etag) => {
-      if (!err) {
+      if (err) {
         console.log(err)
         reject(new Error('Oops!, error upload file', err))
       }
@@ -46,7 +50,7 @@ async function uploadFileSteam(filename, oriFilename, fileType, fileStream) {
 async function listBuckets() {
   return new Promise((resolve, reject) => {
     s3Client.listBuckets((err, data) => {
-      if (!err) {
+      if (err) {
         console.log(err)
         reject(new Error('Oops!, Error get list buckets', err))
       }
