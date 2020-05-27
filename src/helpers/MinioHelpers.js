@@ -5,17 +5,18 @@ const { MINIO_BUCKET } = process.env
 
 async function uploadFile(filename, oriFilename, fileType, tempFilePath) {
   const encodedOriFileName = Buffer.from(oriFilename).toString('base64')
+  const filePath = `${filename}`
 
   const metaData = {
     'content-type': fileType,
     'file-name': encodedOriFileName,
-    'x-amz-acl': 'public-read',
+    'X-Amz-Acl': 'public-read',
   }
 
   console.log(metaData)
 
   return new Promise((resolve, reject) => {
-    s3Client.fPutObject(MINIO_BUCKET, filename, tempFilePath, metaData, (err, etag) => {
+    s3Client.fPutObject(MINIO_BUCKET, filePath, tempFilePath, metaData, (err, etag) => {
       console.log(err, etag)
 
       if (err) {
@@ -29,15 +30,20 @@ async function uploadFile(filename, oriFilename, fileType, tempFilePath) {
 
 async function uploadFileSteam(filename, oriFilename, fileType, fileStream) {
   const encodedOriFileName = Buffer.from(oriFilename).toString('base64')
+  const filePath = `${filename}`
 
   const metaData = {
     'content-type': fileType,
     'file-name': encodedOriFileName,
-    'x-amz-acl': 'public-read',
+    'X-Amz-Acl': 'public-read',
   }
 
+  console.log(metaData)
+
   return new Promise((resolve, reject) => {
-    s3Client.putObject(MINIO_BUCKET, filename, fileStream, metaData, (err, etag) => {
+    s3Client.putObject(MINIO_BUCKET, filePath, fileStream, metaData, (err, etag) => {
+      console.log(err, etag)
+
       if (err) {
         console.log(err)
         reject(new Error('Oops!, error upload file', err))

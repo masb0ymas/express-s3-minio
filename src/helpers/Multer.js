@@ -1,8 +1,12 @@
 /* eslint-disable prefer-destructuring */
 import multer from 'multer'
 import path from 'path'
+import moment from 'moment'
+import { v4 as uuidv4 } from 'uuid'
 
 const sizeMb = 5
+
+const replaceFilename = `${moment().format('YYYY-MM-DD')}-${uuidv4()}`
 
 const limitField = 25 * 1024 * 1024
 const limitSize = sizeMb * 1024 * 1024 // 5MB
@@ -53,7 +57,7 @@ const setup = (
       cb(null, './public/uploads/csv/')
     },
     filename(req, file, cb) {
-      cb(null, `dokumen-${Date.now()}${path.extname(file.originalname)}`)
+      cb(null, `${replaceFilename}${path.extname(file.originalname)}`)
     },
     ...(diskStorageCfg || {}),
   })
@@ -89,15 +93,11 @@ const setup = (
             })
           }
           if (err.code === 'LIMIT_UNEXPECTED_FILE') {
-            return res
-              .status(403)
-              .json({ message: 'Melebihi limit files upload' })
+            return res.status(403).json({ message: 'Melebihi limit files upload' })
           }
           console.log(err)
           // formdata tipe file tidak memenuhi rules yg dibuat selain limit file
-          return res
-            .status(403)
-            .json({ message: `${'Akses ditolak!'} ${err.message}` })
+          return res.status(403).json({ message: `${'Akses ditolak!'} ${err.message}` })
         }
         next()
       })

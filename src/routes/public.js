@@ -17,11 +17,15 @@ apiPublic.create({
 apiPublic.create({
   baseURL: '/storage',
   get: MinIOController.getAllStorage,
-  getWithParam: [[':filename', MinIOController.getFileStorage]],
+  getWithParam: [
+    ['stream/:filename', MinIOController.getFileStorageStream],
+    [':filename', MinIOController.getFileStorage],
+  ],
   post: {
     middleware: multerS3,
-    callback: MinIOController.uploadedFile,
+    callback: MinIOController.postFile,
   },
+  postWithParam: [['stream', multerS3, MinIOController.postFileStream]],
   delete: MinIOController.destroyFile,
 })
 
